@@ -38,7 +38,7 @@ TOKEN = credentials.readline().strip()
 bot = commands.Bot(command_prefix='')
 
 @bot.command(name='input')
-@commands.has_role('plantfriend')
+@commands.has_role('Reviews')
 async def inputReview(ctx, username: str, rating: int, url: str):
 	await ctx.send("Success! Username = " + username + ", rating = " + str(rating) + ", url = " + url)
 
