@@ -440,6 +440,23 @@ def START_DISCORD_BOT():
 			await ctx.send(":wilted_rose: You are missing an argument:\n`input` `USERNAME` `RATING` `URL`.")
 		if isinstance(error, commands.errors.BadArgument):
 			await ctx.send(":wilted_rose: Ensure correct format:\n`input` `USERNAME` `RATING` `URL`.")
+			
+	@bot.command()
+	async def checkReview(ctx,arg):
+	  user = arg.lower()
+	  loc = "userdirectory/"+arg[0].lower()
+	  wiki = reddit.subreddit("Takeaplantleaveaplant").wiki[loc].content_md.lower()
+	  userIn=wiki.find("##"+user)
+	  if userIn != -1:
+	    wiki = wiki[userIn:]
+	    wiki = wiki[:wiki.find("\n\n")]
+	    ratingStart = wiki.find("###")
+	    ratingEnd = wiki.find(")")
+	    rating = wiki[ratingStart+3:ratingEnd+1]
+	    embed=discord.Embed(title=arg, url="https://reddit.com//r/TakeaPlantLeaveaPlant/wiki/"+loc+"#wiki_"+user, description=rating, color=0x84d7f9)
+	    await ctx.reply(embed=embed)
+	  else:
+	    await ctx.reply("User "+arg+" not found in the directory.")
 
 	bot.run(TOKEN)
 
