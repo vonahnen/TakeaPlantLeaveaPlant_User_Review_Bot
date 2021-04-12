@@ -27,7 +27,7 @@ THE_FILE = "tempReviewWikipg.txt"
 global FILE_LOCK
 FILE_LOCK = asyncio.Lock()
 
-credentials = open(open("loc.txt", "r").readline().strip(), "r")
+credentials = open("reddit.txt", "r").readline().strip()
 
 cid = credentials.readline().strip()
 csc = credentials.readline().strip()
@@ -419,12 +419,12 @@ def SET_FLAIR(username, flairtext):
 	
 
 def START_DISCORD_BOT():
-	TOKEN = open(open("locd.txt", "r").readline().strip(), "r").readline().strip()
+	TOKEN = open("discord.txt", "r").readline().strip()
 
 	bot = commands.Bot(command_prefix=',')
 
 	@bot.command(name='r')
-	@commands.has_role('plantfriend')
+	@commands.has_role('Reviews')
 	async def inputReview(ctx, username: str, rating: str, url: str):
 		result = ""
 		async with FILE_LOCK:
@@ -441,7 +441,7 @@ def START_DISCORD_BOT():
 		if isinstance(error, commands.errors.BadArgument):
 			await ctx.send(":wilted_rose: Ensure correct format:\n`input` `USERNAME` `RATING` `URL`.")
 			
-	@bot.command()
+	@bot.command(name='checkReview')
 	async def checkReview(ctx,arg):
 	  user = arg.lower()
 	  loc = "userdirectory/"+arg[0].lower()
@@ -454,9 +454,9 @@ def START_DISCORD_BOT():
 	    ratingEnd = wiki.find(")")
 	    rating = wiki[ratingStart+3:ratingEnd+1]
 	    embed=discord.Embed(title=arg, url="https://reddit.com//r/TakeaPlantLeaveaPlant/wiki/"+loc+"#wiki_"+user, description=rating, color=0x84d7f9)
-	    await ctx.reply(embed=embed)
+	    await ctx.send(embed=embed)
 	  else:
-	    await ctx.reply("User "+arg+" not found in the directory.")
+	    await ctx.send("User "+arg+" not found in the directory.")
 
 	bot.run(TOKEN)
 
