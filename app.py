@@ -27,7 +27,7 @@ THE_FILE = "tempReviewWikipg.txt"
 global FILE_LOCK
 FILE_LOCK = asyncio.Lock()
 
-credentials = open("reddit.txt", "r").readline().strip()
+credentials = open("reddit.txt", "r")
 
 cid = credentials.readline().strip()
 csc = credentials.readline().strip()
