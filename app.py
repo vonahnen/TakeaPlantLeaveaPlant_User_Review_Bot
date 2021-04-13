@@ -27,6 +27,9 @@ THE_FILE = "tempReviewWikipg.txt"
 global FILE_LOCK
 FILE_LOCK = asyncio.Lock()
 
+currentReviewThread = "mhn3x5"
+red = "https://www.reddit.com"
+
 credentials = open("reddit.txt", "r")
 
 cid = credentials.readline().strip()
@@ -416,7 +419,80 @@ def SET_FLAIR(username, flairtext):
 	redditUser = reddit.redditor(username)
 	#sub.flair.set(redditUser, "test", css_class = "userorange")  # this is because reddit's api is being weird and doing weird things...
 	sub.flair.set(redditUser, flairtext, css_class = "usergreen")
+
 	
+def wordToNum(word):
+  switcher = {
+    "zero":0,"one":1,"two":2,"three":3,"four":4,"five":5
+  }
+
+def parseReview(submission):
+  user = ""
+  rating = -1
+  review=submission.title.replace("[","").replace("]","").lower().split()
+  for word in review:
+    if word in ["0","1","2","3","4","5"] or word in ["zero","one","two","three","four","five"]:
+      if rating != -1:
+        return [-1,submission.author.name,red+submission.permalink] 
+      if word.isdigit():
+        rating = int(word)
+      else:
+        rating = wordToNum(word)
+    elif word.startswith("u/"):
+      print("user check:"+ word)
+      user = word[2:]
+  if rating >-1 and user:
+    if rating == 5:
+      return [0,user,rating,red+submission.permalink]
+    else:
+      return [1,user,rating,red+submission.permalink]
+  #else cannot parse
+  else:
+    return [-1,submission.author.name,red+submission.permalink]
+
+async def processReviews(ctx, newReviews):
+#review channel id 705624655649833082
+#coding channel id 785934949945049158
+  reviewChannel = bot.get_channel(705624655649833082)
+  cantParse=""
+  modReview=""
+  if newReviews:
+    for review in newReviews:
+      #if error code 0, [error code, user, rating, url]
+      if review[0] == 0:
+        # print("5 stars")
+        await reviewChannel.send(",r "+review[1]+" "+str(review[2])+" <"+review[3]+">")
+      #if error code -1, [error code, author, url]
+      elif review[0] == -1:
+        # print("cannot parse")
+        cantParse+="[Submission by: "+review[1]+"]("+review[2]+")\n"
+      #if error code 1, [error code, user, rating, url] 
+      elif review[0] == 1:
+        # print ("needs mod review")
+        modReview+="["+str(review[2])+" stars to "+review[1]+"]("+review[3]+")\n"
+      #else something went wrong
+      else:
+        await ctx.send("something went wrong")
+    if cantParse:
+      embed = discord.Embed(title="Could not parse the following review titles",description=cantParse, color =0xff4949)
+      await reviewChannel.send(embed=embed)
+    if modReview:
+      embed = discord.Embed(title="The following reviews are less than 5 stars and require mod review",description=modReview,color=0xacea48)
+      await reviewChannel.send(embed=embed)
+  else:
+    #print("empty")
+    await ctx.send("No reviews at this time")
+	
+async def getPastReviews(ctx):
+  pastReviews = []
+  channel = bot.get_channel(705624655649833082)
+  async for message in channel.history(limit=100):
+    if(message.author.name == "Planty Bot" and "executed successfully" in message.content and not currentReviewThread in message.content):
+      txt = message.content.replace("`","").split()
+      idCode = txt[2][txt[2].find("comments/")+9:]
+      idCode = idCode[:idCode.find("/")]
+      pastReviews.append([idCode,txt[2]])
+  return pastReviews
 
 def START_DISCORD_BOT():
 	TOKEN = open("discord.txt", "r").readline().strip()
@@ -457,6 +533,27 @@ def START_DISCORD_BOT():
 	    await ctx.send(embed=embed)
 	  else:
 	    await ctx.send("User "+arg+" not found in the directory.")
+	
+	@bot.command()
+	async def fetchReviews(ctx):
+	  newReviews = []
+	  await ctx.send("Gathering past reviews...")
+	  pastReviews=await getPastReviews(ctx)
+	  if not pastReviews:
+	    await ctx.send("There were no recent post reviews in #reviews")
+	  await ctx.send("Gathering recent reddit posts and cross-checking with old posts...")
+	  for submission in reddit.subreddit("Takeaplantleaveaplant").new(limit=20):
+	    if submission.link_flair_text and "Trade Review" in submission.link_flair_text:
+	      found = False
+	      if pastReviews:
+		for oldReview in pastReviews:
+		  #if this review has already been processed
+		  if oldReview[0] in submission.permalink:
+		    found=True
+		    break
+	      if not found:
+		newReviews.append(parseReview(submission))
+	  await processReviews(ctx,newReviews)
 
 	bot.run(TOKEN)
 
