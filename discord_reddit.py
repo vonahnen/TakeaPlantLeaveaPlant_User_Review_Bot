@@ -61,7 +61,6 @@ class DiscordReddit:
     ratingEnd = wiki.find(")")
     rating = wiki[ratingStart+3:ratingEnd+1]
 
-    print(f"Found user wiki for {username}!")
     return UserWiki(username, f"https://reddit.com/r/TakeaPlantLeaveaPlant/wiki/{user_directory}/#wiki_{username}", rating)
 
   def get_subreddit(self):
@@ -407,3 +406,37 @@ class DiscordReddit:
 
     result = ":sunflower: " + self.add_user_rating(redditor.name, rating, url)
     return result
+
+  def parse_review(self, submission):
+    reddit_url = "https://www.reddit.com"
+    user = ""
+    rating = -1
+    review=submission.title.replace("[","").replace("]","").lower().split()
+    print("submission: " + submission.title.replace("[","").replace("]","").lower())
+    for word in review:
+      lowerCaseWord = word.lower()
+
+      if word in ["0","1","2","3","4","5"] or lowerCaseWord in ["zero","one","two","three","four","five"]:
+        if rating != -1:
+          print("rating != -1")
+          return [-1,submission.author.name,reddit_url+submission.permalink]
+
+        if word.isdigit():
+          rating = int(word)
+        else:
+          rating = utils.wordToNum(lowerCaseWord)
+
+      elif word.startswith("u/"):
+        user = word[2:].strip(punctuation)
+        print("User: " + word + ", " + user)
+
+    print(str(user) + ": " + str(rating) + "\n")
+
+    if rating >-1 and user:
+      if rating == 5:
+        return [0,user,rating,reddit_url+submission.permalink]
+      else:
+        return [1,user,rating,reddit_url+submission.permalink]
+    #else cannot parse
+    else:
+      return [-1,submission.author.name,reddit_url+submission.permalink]
