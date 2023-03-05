@@ -1,0 +1,223 @@
+diff --git a/app.py b/app.py
+index 273d7a7..8eeb41d 100644
+--- a/app.py
++++ b/app.py
+@@ -1,6 +1,7 @@
+ import os
+ import asyncio
+ import utils
++from string import punctuation
+ 
+ import discord
+ from discord.ext import commands
+@@ -420,25 +421,37 @@ def SET_FLAIR(username, flairtext):
+ 	#sub.flair.set(redditUser, "test", css_class = "userorange")  # this is because reddit's api is being weird and doing weird things...
+ 	sub.flair.set(redditUser, flairtext, css_class = "usergreen")
+ 
+-	
++
+ def wordToNum(word):
+ 	switcher = {"zero":0,"one":1,"two":2,"three":3,"four":4,"five":5}
++	return switcher[word]
+ 
+ def parseReview(submission):
+ 	user = ""
+ 	rating = -1
+ 	review=submission.title.replace("[","").replace("]","").lower().split()
++	print("submission: " + submission.title.replace("[","").replace("]","").lower())
+ 	for word in review:
+-		if word in ["0","1","2","3","4","5"] or word in ["zero","one","two","three","four","five"]:
++		lowerCaseWord = word.lower()
++
++		if word in ["0","1","2","3","4","5"] or lowerCaseWord in ["zero","one","two","three","four","five"]:
+ 			if rating != -1:
+-				return [-1,submission.author.name,red+submission.permalink] 
++				print("rating != -1")
++				return [-1,submission.author.name,red+submission.permalink]
++
+ 			if word.isdigit():
+ 				rating = int(word)
+ 			else:
+-				rating = wordToNum(word)
+-			elif word.startswith("u/"):
+-				print("user check:"+ word)
+-				user = word[2:]
++				rating = wordToNum(lowerCaseWord)
++
++		elif word.startswith("u/"):
++			print("User: " + word + ", " + word[2:].strip(punctuation))
++			user = word[2:].strip(punctuation)
++			print("User: " + word + ", " + user)
++
++	print("Submission done parsing")
++	print(str(user) + ": " + str(rating) + "\n")
++
+ 	if rating >-1 and user:
+ 		if rating == 5:
+ 			return [0,user,rating,red+submission.permalink]
+@@ -448,41 +461,42 @@ def parseReview(submission):
+ 	else:
+ 		return [-1,submission.author.name,red+submission.permalink]
+ 
+-async def processReviews(ctx, newReviews):
++#async def processReviews(ctx, bot, newReviews):
+ #review channel id 705624655649833082
+ #coding channel id 785934949945049158
+-	reviewChannel = bot.get_channel(705624655649833082)
+-	cantParse=""
+-	modReview=""
+-	if newReviews:
+-		for review in newReviews:
+-			#if error code 0, [error code, user, rating, url]
+-			if review[0] == 0:
+-				# print("5 stars")
+-				await reviewChannel.send(",r "+review[1]+" "+str(review[2])+" <"+review[3]+">")
+-			#if error code -1, [error code, author, url]
+-			elif review[0] == -1:
+-				# print("cannot parse")
+-				cantParse+="[Submission by: "+review[1]+"]("+review[2]+")\n"
+-			#if error code 1, [error code, user, rating, url] 
+-			elif review[0] == 1:
+-				# print ("needs mod review")
+-				modReview+="["+str(review[2])+" stars to "+review[1]+"]("+review[3]+")\n"
+-			#else something went wrong
+-			else:
+-				await ctx.send("something went wrong")
+-
+-		if cantParse:
+-			embed = discord.Embed(title="Could not parse the following review titles",description=cantParse, color =0xff4949)
+-			await reviewChannel.send(embed=embed)
+-		elif modReview:
+-			embed = discord.Embed(title="The following reviews are less than 5 stars and require mod review",description=modReview,color=0xacea48)
+-			await reviewChannel.send(embed=embed)
+-	else:
+-		#print("empty")
+-		await ctx.send("No reviews at this time")
+-	
+-async def getPastReviews(ctx):
++#	reviewChannel = bot.get_channel(705624655649833082)
++#	cantParse=""
++#	modReview=""
++#	if newReviews:
++#		for review in newReviews:
++#			#if error code 0, [error code, user, rating, url]
++#			if review[0] == 0:
++#				# print("5 stars")
++#				#await reviewChannel.send(",r "+review[1]+" "+str(review[2])+" <"+review[3]+">")
++#				ctx.inputReview(ctx, str(review[1]), str(review[2]), str(review[3]))
++#			#if error code -1, [error code, author, url]
++#			elif review[0] == -1:
++#				# print("cannot parse")
++#				cantParse+="[Submission by: "+review[1]+"]("+review[2]+")\n"
++#			#if error code 1, [error code, user, rating, url] 
++#			elif review[0] == 1:
++#				# print ("needs mod review")
++#				modReview+="["+str(review[2])+" stars to "+review[1]+"]("+review[3]+")\n"
++#			#else something went wrong
++#			else:
++#				await ctx.send("something went wrong")
++#
++#		if cantParse:
++#			embed = discord.Embed(title="Could not parse the following review titles",description=cantParse, color =0xff4949)
++#			await reviewChannel.send(embed=embed)
++#		elif modReview:
++#			embed = discord.Embed(title="The following reviews are less than 5 stars and require mod review",description=modReview,color=0xacea48)
++#			await reviewChannel.send(embed=embed)
++#	else:
++#		#print("empty")
++#		await ctx.send("No reviews at this time")
++
++async def getPastReviews(bot):
+ 	pastReviews = []
+ 	channel = bot.get_channel(705624655649833082)
+ 	async for message in channel.history(limit=300):
+@@ -515,7 +529,7 @@ def START_DISCORD_BOT():
+ 			await ctx.send(":wilted_rose: You are missing an argument:\n`input` `USERNAME` `RATING` `URL`.")
+ 		if isinstance(error, commands.errors.BadArgument):
+ 			await ctx.send(":wilted_rose: Ensure correct format:\n`input` `USERNAME` `RATING` `URL`.")
+-			
++
+ 	@bot.command(name='checkReview')
+ 	async def checkReview(ctx,arg):
+ 		user = arg.lower()
+@@ -532,31 +546,70 @@ def START_DISCORD_BOT():
+ 			await ctx.send(embed=embed)
+ 		else:
+ 			await ctx.send("User "+arg+" not found in the directory.")
+-	
++
+ 	@bot.command()
+ 	async def fetchReviews(ctx, arg):
+-		if type(arg) == int and arg>=0 and arg<=1000:
++		num_reviews = int(arg)
++		if num_reviews>=0 and num_reviews<=1000:
+ 			newReviews = []
+ 			await ctx.send("Gathering past reviews...")
+-			pastReviews=await getPastReviews(ctx)
++			pastReviews=await getPastReviews(bot)
+ 			if not pastReviews:
+ 				await ctx.send("There were no recent post reviews in #reviews")
+ 			await ctx.send("Gathering recent reddit posts and cross-checking with old posts...")
+-			for submission in reddit.subreddit("Takeaplantleaveaplant").new(limit=arg):
++			for submission in reddit.subreddit("Takeaplantleaveaplant").search("flair:'New'",'new'):
+ 				if submission.link_flair_text and "Trade Review" in submission.link_flair_text:
+ 					found = False
+ 					if pastReviews:
+ 						for oldReview in pastReviews:
+-						#if this review has already been processed
+-						if oldReview[0] in submission.permalink:
+-							found=True
+-							break
++							#if this review has already been processed
++							if oldReview[0] in submission.permalink:
++								found=True
++								break
+ 					if not found:
+-						newReviews.append(parseReview(submission))
+-			await processReviews(ctx,newReviews)
++						print("Reviewing " + submission.title.replace("[","").replace("]","").lower())
++						review = parseReview(submission)
++						print("Done reviewing " + submission.title.replace("[","").replace("]","").lower())
++						newReviews.append(review)
++			await processReviews(ctx, newReviews)
+ 		else:
+ 			await ctx.send("Invalid arguments. Please include the number of reviews you want to fetch")
+ 
++	async def processReviews(ctx, newReviews):
++		#review channel id 705624655649833082
++		#coding channel id 785934949945049158
++		reviewChannel = bot.get_channel(705624655649833082)
++		cantParse=""
++		modReview=""
++		if newReviews:
++			for review in newReviews:
++				#if error code 0, [error code, user, rating, url]
++				if review[0] == 0:
++					# print("5 stars")
++					#await reviewChannel.send(",r "+review[1]+" "+str(review[2])+" <"+review[3]+">")
++					await inputReview(ctx, str(review[1]), str(review[2]), str(review[3]))
++				#if error code -1, [error code, author, url]
++				elif review[0] == -1:
++					# print("cannot parse")
++					cantParse+="[Submission by: "+review[1]+"]("+review[2]+")\n"
++				#if error code 1, [error code, user, rating, url] 
++				elif review[0] == 1:
++					# print ("needs mod review")
++					modReview+="["+str(review[2])+" stars to "+review[1]+"]("+review[3]+")\n"
++				#else something went wrong
++				else:
++					await ctx.send("something went wrong")
++
++			if cantParse:
++				embed = discord.Embed(title="Could not parse the following review titles",description=cantParse, color =0xff4949)
++				await reviewChannel.send(embed=embed)
++			elif modReview:
++				embed = discord.Embed(title="The following reviews are less than 5 stars and require mod review",description=modReview,color=0xacea48)
++				await reviewChannel.send(embed=embed)
++		else:
++			#print("empty")
++			await ctx.send("No reviews at this time")
++
+ 	bot.run(TOKEN)
+ 
+ def main():
