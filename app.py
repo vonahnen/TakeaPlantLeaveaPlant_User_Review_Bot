@@ -459,7 +459,7 @@ def parseReview(submission):
 		return [-1,submission.author.name,red+submission.permalink]
 
 async def processReviews(ctx, newReviews):
-	reviewChannel = bot.get_channel(705624655649833082)
+	reviewChannel = bot.get_channel(review_channel_id)
 	cantParse=""
 	modReview=""
 	if newReviews:
@@ -492,7 +492,7 @@ async def processReviews(ctx, newReviews):
 	
 async def getPastReviews(ctx):
 	pastReviews = []
-	channel = bot.get_channel(705624655649833082)
+	channel = bot.get_channel(review_channel_id)
 	async for message in channel.history(limit=300):
 		if(message.author.name == "Planty Bot" and "executed successfully" in message.content and not currentReviewThread in message.content):
 			txt = message.content.replace("`","").split()
