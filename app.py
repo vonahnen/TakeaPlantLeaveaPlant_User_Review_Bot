@@ -41,7 +41,11 @@ usn = credentials.readline().strip()
 pwd = credentials.readline().strip()
 
 new_modmail_check_frequency_seconds = 3600
-weekly_modmail_check_frequency_minutes = 10080
+all_modmail_check_frequency_minutes = 10080
+
+review_channel_id = 705624655649833082
+modmail_new_active_channel_id = 1082072137394831490
+modmail_all_active_channel_id = 1082076792753487942
 
 def ADD_USER_RATING(username, rating, url):
 	# get the wikipage
@@ -455,8 +459,6 @@ def parseReview(submission):
 		return [-1,submission.author.name,red+submission.permalink]
 
 async def processReviews(ctx, newReviews):
-#review channel id 705624655649833082
-#coding channel id 785934949945049158
 	reviewChannel = bot.get_channel(705624655649833082)
 	cantParse=""
 	modReview=""
@@ -575,15 +577,15 @@ def START_DISCORD_BOT():
 			conversation_last_updated = parser.parse(active_modmail_conversation.last_updated)
 
 			if (datetime.now(timezone.utc) - conversation_last_updated).total_seconds() <= new_modmail_check_frequency_seconds:
-				await displayActiveModMailConversation("NEW/UPDATED ALERT", active_modmail_conversation)
+				await displayActiveModMailConversation("NEW/UPDATED ALERT", active_modmail_conversation, modmail_new_active_channel_id)
 
-	@tasks.loop(minutes = weekly_modmail_check_frequency_minutes)
+	@tasks.loop(minutes = all_modmail_check_frequency_minutes)
 	async def retrieveAllActiveModmailConversations():
 		for active_modmail_conversation in reddit.subreddit("Takeaplantleaveaplant").modmail.conversations():
-			await displayActiveModMailConversation("WEEKLY ALERT", active_modmail_conversation)
+			await displayActiveModMailConversation("WEEKLY ALERT", active_modmail_conversation, modmail_all_active_channel_id)
 
-	async def displayActiveModMailConversation(title_banner, active_modmail_conversation):
-		reviewChannel = bot.get_channel(705624655649833082)
+	async def displayActiveModMailConversation(title_banner, active_modmail_conversation, discord_channel_id):
+		discordChannel = bot.get_channel(discord_channel_id)
 
 		conversation_id = active_modmail_conversation.id
 		conversation_redditor_authors = active_modmail_conversation.authors
@@ -597,7 +599,7 @@ def START_DISCORD_BOT():
 		conversation_last_mod_update = active_modmail_conversation.last_mod_update
 		conversations_messages = active_modmail_conversation.messages
 
-		discord_message = f"Metadata"
+		discord_message = f"METADATA"
 		discord_message = f"{discord_message}\n- Subject: {conversation_subject}"
 		discord_message = f"{discord_message}\n- Modmail Conversation ID: {conversation_id}"
 		discord_message = f"{discord_message}\n- Number of Messages: {conversation_num_messages}"
@@ -611,7 +613,7 @@ def START_DISCORD_BOT():
 		for message in conversations_messages:
 			message_author = "u/" + message.author.name
 			message_body = message.body_markdown
-			discord_message = f"{discord_message}\n\n{message_author}\n{message.date}\n{message_body}"
+			discord_message = f"{discord_message}\n\nMESSAGE\nFROM: {message_author}\nAT: {message.date}\n{message_body}"
 
 
 		discord_embed_char_limit = 3000 # Making this less than the 4096 limit to account for the possibility of multi-byte characters.
@@ -624,7 +626,7 @@ def START_DISCORD_BOT():
 				discord_message_title = f"((CONTINUED)) {discord_message_title} ((CONTINUED))"
 
 			embed = discord.Embed(title=discord_message_title,description=discord_message[i*discord_embed_char_limit:i*discord_embed_char_limit + discord_embed_char_limit], color=0xff4949)
-			await reviewChannel.send(embed=embed)
+			await discordChannel.send(embed=embed)
 
 	bot.run(TOKEN)
 
